@@ -213,7 +213,6 @@ const subtopicListItemInPracticeTabSelector = '.e2e-test-subtopic-item';
 const tabTitleInTopicPageSelector = '.e2e-test-topic-page-tab-title';
 const revisionTabButtonSelector = '.e2e-test-study-tab-link';
 const revisionTabSelector = 'subtopics-list';
-const blogUrl = testConstants.URLs.Blog;
 const impactReport2022Url = testConstants.URLs.ImpactReport2022Url;
 const impactReport2023Url = testConstants.URLs.ImpactReport2023Url;
 const impactReport2024Url = testConstants.URLs.ImpactReport2024Url;
@@ -337,6 +336,17 @@ const blogCardTagContainerSelector = '.blog-card-tag-container';
 const blogShareButtonSelector = '.share-blog-post-button';
 const blogSuggestedForYouSectionSelector = '.post-to-recommend-section';
 const blogSuggestedForYouHeadingSelector = '.post-to-recommend-section-heading';
+
+// Contact Us selectors and URLs.
+const contactUrl = testConstants.URLs.Contact;
+const navbarGetInvolvedTabContactUsButton =
+  'a.e2e-test-navbar-get-involved-menu-contact-us-button';
+const mobileSidebarGetInvolvedMenuContactUsButton =
+  'a.e2e-mobile-test-sidebar-get-involved-menu-contact-us-button';
+const contactUsSubheadingSelector = '.e2e-test-contact-subheading';
+const contactUsContentCard = '.e2e-test-contact-page-content';
+const contactUsContentCardHeadingSelector = `${contactUsContentCard} h2`;
+const emailLinkSelector = '.oppia-contact-mail';
 
 export class LoggedOutUser extends BaseUser {
   /**
@@ -3656,6 +3666,37 @@ export class LoggedOutUser extends BaseUser {
   }
 
   /**
+   * Function to click the Contact Us button in the Get Involved Menu
+   * on navbar and check if it opens the Contact page.
+   */
+  async clickContactUsButtonInGetInvolvedMenuOnNavbar(): Promise<void> {
+    if (this.isViewportAtMobileWidth()) {
+      await this.expectElementToBeVisible(mobileNavbarButtonSelector);
+      await this.openMobileSidebar();
+      await this.waitForAngularStability();
+
+      await this.page
+        .locator(mobileSidebarExpandGetInvolvedMenuButton)
+        .dispatchEvent('click');
+
+      await this.expectElementToBeVisible(
+        mobileSidebarGetInvolvedMenuContactUsButton
+      );
+      await this.clickButtonToNavigateToNewPage(
+        mobileSidebarGetInvolvedMenuContactUsButton,
+        contactUrl
+      );
+    } else {
+      await this.expectElementToBeVisible(navbarGetInvolvedTab);
+      await this.clickOnElementWithSelector(navbarGetInvolvedTab);
+      await this.clickButtonToNavigateToNewPage(
+        navbarGetInvolvedTabContactUsButton,
+        contactUrl
+      );
+    }
+  }
+
+  /**
    * Expects the blog welcome message to be visible.
    * @param {string} expectedText - The expected welcome message.
    */
@@ -3781,6 +3822,97 @@ export class LoggedOutUser extends BaseUser {
       (await this.page.locator(blogSuggestedForYouSectionSelector).count()) > 0
     ) {
       await this.expectElementToBeVisible(blogSuggestedForYouHeadingSelector);
+    }
+  }
+
+  /**
+   * Checks for subheading in Contact Us Page.
+   * @param {string} subheading - The expected subheading text to be found.
+   */
+  async verifyContactUsSubHeading(subheading: string): Promise<void> {
+    await this.expectElementToBeVisible(contactUsSubheadingSelector);
+    const actualSubheading = await this.page.$eval(
+      contactUsSubheadingSelector,
+      element => (element as HTMLElement).textContent?.trim()
+    );
+
+    if (actualSubheading !== subheading) {
+      throw new Error(
+        `Expected subheading to be "${subheading}", but found "${actualSubheading}"`
+      );
+    }
+  }
+
+  /**
+   * Checks if content card with given heading exists in contact us page.
+   * @param {string} heading - The heading to check for in content cards.
+   */
+  async expectContactUsPageToContainContentCardWithHeading(
+    heading: string
+  ): Promise<void> {
+    const contentCardHeadings = await this.page.$$eval(
+      contactUsContentCardHeadingSelector,
+      elements =>
+        elements.map(element => (element as HTMLElement).textContent?.trim())
+    );
+
+    if (contentCardHeadings.includes(heading)) {
+      showMessage(`Heading ${heading} is present.`);
+    } else {
+      throw new Error(
+        `Heading "${heading}" is not present. Headings present: ${contentCardHeadings.join(', ')}`
+      );
+    }
+  }
+
+  /**
+   * Checks if content cards with given headings exist in contact us page.
+   * @param {string[]} headings - The headings to check for in content cards.
+   */
+  async expectContactUsPageToContainContentCardsWithHeading(
+    headings: string[]
+  ): Promise<void> {
+    for (const heading of headings) {
+      await this.expectContactUsPageToContainContentCardWithHeading(heading);
+    }
+  }
+
+  /**
+   * Checks the admin email link in the Contact Us page and verifies
+   * that it navigates to the correct mailto URL.
+   */
+  async verifyAdminEmailLinkInContactUsPage(): Promise<void> {
+    await this.expectElementToBeVisible(emailLinkSelector);
+    const href = await this.page.$eval(emailLinkSelector, el =>
+      el.getAttribute('href')
+    );
+    const expectedHref =
+      'https://mail.google.com/mail/?view=cm&fs=1&to=admin@oppia.org';
+    if (href !== expectedHref) {
+      throw new Error(
+        `Email link has href "${href}" instead of "${expectedHref}"`
+      );
+    }
+  }
+
+  /**
+   * Checks the second press email link in the Contact Us page and verifies
+   * that it navigates to the correct mailto URL.
+   */
+  async verifyPressEmailLinkInContactUsPage(): Promise<void> {
+    await this.expectElementToBeVisible(emailLinkSelector);
+    const emailLinks = await this.page.$$(emailLinkSelector);
+
+    const href = await this.page.evaluate(
+      el => el.getAttribute('href'),
+      emailLinks[1]
+    );
+    const expectedHref =
+      'https://mail.google.com/mail/?view=cm&fs=1&to=press@oppia.org';
+    if (href !== expectedHref) {
+      throw new Error(
+        `Email link has href "${href}" instead of "${expectedHref}"`
+      );
     }
   }
 }
